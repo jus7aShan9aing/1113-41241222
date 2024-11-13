@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 成績輸入</title>
+
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 基本樣式 */
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+            flex-direction: column;
+        }
+
+        /* 標題 */
+        h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* 表單容器 */
+        .form-container {
+            background-color: #fff;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            margin-bottom: 30px;
+        }
+
+        /* 表單項目 */
+        label {
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: block;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* 送出按鈕 */
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* 輸入框焦點樣式 */
+        input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        /* 警告訊息樣式 */
+        .alert {
+            padding: 10px;
+            background-color: #f44336;
+            color: white;
+            border-radius: 4px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        /* 顯示成績表格 */
+        .score-table {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .score-table th, .score-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .score-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .score-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+    </style>
+
+    <script type="module">
+        // Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-analytics.js";
+        import { getDatabase, ref, push, set, get, child } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+
+        // Firebase 配置
+        const firebaseConfig = {
+          apiKey: "AIzaSyDgjRLO77t0gcySCgw54m_6_JeR42teAD8",
+          authDomain: "huyunzhong-fa-bai-21-tai.firebaseapp.com",
+          databaseURL: "https://huyunzhong-fa-bai-21-tai-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "huyunzhong-fa-bai-21-tai",
+          storageBucket: "huyunzhong-fa-bai-21-tai.firebasestorage.app",
+          messagingSenderId: "875548911269",
+          appId: "1:875548911269:web:b22ed948879d397fc10f4c",
+          measurementId: "G-HBRFMRCN3W"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+
+        // 參考到 Firebase Realtime Database 中的 "scores" 節點
+        const scoresRef = ref(database, 'scores');
+
+        // 顯示成績紀錄
+        function displayScores() {
+            get(scoresRef)
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        const tableBody = document.getElementById('scoresTableBody');
+                        tableBody.innerHTML = ''; // 清空表格
+
+                        // 將資料轉換為陣列並反轉順序
+                        const scoreArray = Object.keys(data).map((key) => {
+                            return { id: key, ...data[key] };
+                        }).reverse();  // 使用 reverse() 來反轉陣列順序
+
+                        // 顯示每條成績紀錄
+                        scoreArray.forEach((scoreData) => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${scoreData.name}</td><td>${scoreData.score}</td>`;
+                            tableBody.appendChild(row);
+                        });
+                    } else {
+                        console.log('No data available');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching data: ', error);
+                });
+        }
+
+        // 頁面加載後顯示現有成績
+        window.onload = displayScores;
+
+        // 處理表單提交
+        document.getElementById('scoreForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const studentName = document.getElementById('studentName').value;
+            const score = document.getElementById('score').value;
+
+            if (studentName && score) {
+                // 在 "scores" 節點下創建一個新項目並儲存成績
+                const newScoreRef = push(scoresRef);
+                set(newScoreRef, {
+                    name: studentName,
+                    score: score
+                }).then(() => {
+                    alert('成績已儲存');
+                    displayScores(); // 提交後重新顯示成績
+                    // 清空表單
+                    document.getElementById('studentName').value = '';
+                    document.getElementById('score').value = '';
+                }).catch((error) => {
+                    alert('儲存失敗: ' + error.message);
+                });
+            } else {
+                const alertBox = document.querySelector('.alert');
+                alertBox.textContent = '請輸入學生姓名和成績';
+                alertBox.style.display = 'block';
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <div class="form-container">
+        <h1>成績輸入</h1>
+        <form id="scoreForm">
+            <div class="alert"></div>
+
+            <label for="studentName">學生姓名:</label>
+            <input type="text" id="studentName" placeholder="輸入學生姓名" required><br>
+
+            <label for="score">成績:</label>
+            <input type="number" id="score" placeholder="輸入成績" required><br>
+
+            <button type="submit">送出</button>
+        </form>
+    </div>
+
+    <div class="form-container">
+        <h2>成績紀錄</h2>
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>學生姓名</th>
+                    <th>成績</th>
+                </tr>
+            </thead>
+            <tbody id="scoresTableBody">
+                <!-- 成績紀錄將動態插入在這裡 -->
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
